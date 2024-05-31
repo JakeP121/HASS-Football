@@ -1,0 +1,25 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "api_key": "API Key",
+                    "team_id": "Team ID"
+                },
+                "data_description": {
+                    "api_key": "https://dashboard.api-football.com/register",
+                    "team_id": "https://dashboard.api-football.com/soccer/ids/teams"
+                },
+                "title": "Setup Team and League entities"
+            }
+        }
+    }
+}
