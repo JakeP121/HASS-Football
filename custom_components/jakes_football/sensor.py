@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import ENTITY_ID_FORMAT, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -23,17 +23,22 @@ async def async_setup_entry(
 ) -> None:
     """Set up sensor device."""
 
+    sensors: list[SensorEntity] = []
+
     teamApi: TeamAPI = hass.data[DOMAIN][entry.entry_id][TEAM_DATA]
     await hass.async_add_executor_job(teamApi.get_team_name)
     _LOGGER.info("Setting up sensor for %s", str(teamApi.get_team_name()))
     team = TeamSensor(hass, teamApi)
+    sensors.append(team)
 
-    leagueApi: LeagueAPI = hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA]
-    await hass.async_add_executor_job(leagueApi.get_name)
-    _LOGGER.info("Setting up sensor for %s", str(leagueApi.get_name()))
-    league = LeagueSensor(hass, leagueApi)
+    if hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA] is not None:
+        leagueApi: LeagueAPI = hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA]
+        await hass.async_add_executor_job(leagueApi.get_name)
+        _LOGGER.info("Setting up sensor for %s", str(leagueApi.get_name()))
+        league = LeagueSensor(hass, leagueApi)
+        sensors.append(league)
 
-    async_add_entities([team, league])
+    async_add_entities(sensors)
 
 
 class TeamSensor(SensorEntity):
@@ -48,13 +53,17 @@ class TeamSensor(SensorEntity):
         self.hass = hass
         self.team = team
 
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            f"jft_team_{team.get_unique_team_name()}"
+        )
         self._attr_name = team.get_team_name()
-        self._attr_unique_id = team.get_unique_team_name()
+        self._attr_unique_id = self.entity_id
 
         self.name: str | None = None
         self.code: str | None = None
         self.country: str | None = None
         self.year_founded: int | None = None
+        self.is_national_team: bool = False
         self.logo: str | None = None
         self.venue: Venue | None = None
 
@@ -65,9 +74,16 @@ class TeamSensor(SensorEntity):
     async def async_update(self) -> None:
         """Update all of our data asynchronously, ready for when we need to show it."""
 
-        self._attr_native_value = await self.hass.async_add_executor_job(
-            self.team.get_league_position
+        self.is_national_team = await self.hass.async_add_executor_job(
+            self.team.is_national_team
         )
+
+        if not self.is_national_team:
+            self._attr_native_value = await self.hass.async_add_executor_job(
+                self.team.get_league_position
+            )
+        else:
+            self._attr_native_value = "National Team"
 
         self.name = await self.hass.async_add_executor_job(self.team.get_team_name)
         self.code = await self.hass.async_add_executor_job(self.team.get_team_code)
@@ -101,6 +117,7 @@ class TeamSensor(SensorEntity):
             attributes["year_founded"] = self.year_founded
         if self.logo is not None:
             attributes["logo"] = self.logo
+        attributes["is_national_team"] = self.is_national_team
 
         if self.venue is not None:
             attributes["venue"] = self.venue.get_attributes()
@@ -126,8 +143,12 @@ class LeagueSensor(SensorEntity):
         SensorEntity.__init__(self)
         self.hass = hass
         self.league = league
+
+        self.entity_id = ENTITY_ID_FORMAT.format(
+            f"jft_league_{league.get_unique_name()}"
+        )
         self._attr_name = league.get_name()
-        self._attr_unique_id = league.get_unique_name()
+        self._attr_unique_id = self.entity_id
 
         self.gameweek: int = 0
         self.country: str = ""

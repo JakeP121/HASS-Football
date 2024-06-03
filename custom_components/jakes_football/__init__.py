@@ -28,9 +28,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         team.get_league_competition
     )
 
-    league: LeagueAPI = LeagueAPI(api_key=api_key, league_id=league_comp.id)
-    hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA] = league
-    team.league = league
+    if league_comp is not None:
+        league: LeagueAPI = LeagueAPI(api_key=api_key, league_id=league_comp.id)
+        hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA] = league
+        team.league = league
+    else:
+        hass.data[DOMAIN][entry.entry_id][LEAGUE_DATA] = None
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

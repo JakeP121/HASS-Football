@@ -1,6 +1,7 @@
 """Provides an interface for API calls for a single team."""
 
 from datetime import datetime
+from enum import StrEnum
 
 from .competitions import Competitions, get_season_number
 from .const import REFRESH_FREQ_MINUTES_MATCH_IN_PROGRESS
@@ -8,6 +9,13 @@ from .fixture import FixtureData
 from .league import LeagueAPI
 from .sports_api import SportsAPI
 from .venue import Venue
+
+
+class TeamType(StrEnum):
+    """Different types of teams."""
+
+    CLUB = "club"
+    NATIONAL = "national"
 
 
 class TeamAPI(SportsAPI):
@@ -19,6 +27,7 @@ class TeamAPI(SportsAPI):
 
         self.team_id: int = team_id
         self.team_name: str | None = None
+        self.team_type: TeamType = TeamType.CLUB
         self.code: str | None = None
         self.country: str | None = None
         self.year_founded: int | None = None
@@ -65,6 +74,14 @@ class TeamAPI(SportsAPI):
             self.refresh_team_info()
         return self.year_founded
 
+    def is_national_team(self) -> bool:
+        """Check if this is a club or national team."""
+        if (
+            self.team_name is None
+        ):  # Since this only needs to be grabbed once, similarly to the team name, then refresh only if the team name is None
+            self.refresh_team_info()
+        return self.team_type == TeamType.NATIONAL
+
     def get_logo(self) -> str | None:
         """Get this team's logo."""
         if self.logo is None:
@@ -93,6 +110,11 @@ class TeamAPI(SportsAPI):
         self.country = team_data["country"]
         self.year_founded = int(team_data["founded"])
         self.logo = team_data["logo"]
+
+        if team_data["national"] is True:
+            self.team_type = TeamType.NATIONAL
+        else:
+            self.team_type = TeamType.CLUB
 
         venue_data = response_data[0]["venue"]
         self.venue = Venue(venue_data)
