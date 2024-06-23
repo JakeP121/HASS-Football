@@ -8,8 +8,9 @@
   "issue_tracker": "https://github.com/JakeP121/HASS-Football/issues",
   "homekit": {},
   "iot_class": "cloud_polling",
+  "loggers": ["custom_components.football"],
   "requirements": [],
   "ssdp": [],
   "zeroconf": [],
-  "version": "v0.1.1"
+  "version": "v0.1.2"
 }

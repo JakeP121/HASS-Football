@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import StrEnum
+import logging
 
 from .competitions import Competitions, get_season_number
 from .const import REFRESH_FREQ_MINUTES_MATCH_IN_PROGRESS
@@ -9,6 +10,8 @@ from .fixture import FixtureData
 from .league import LeagueAPI
 from .sports_api import SportsAPI
 from .venue import Venue
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class TeamType(StrEnum):
@@ -122,7 +125,7 @@ class TeamAPI(SportsAPI):
     def get_current_fixture(self) -> FixtureData:
         """Return data about the current fixture. Refresh if needs to. Check FixtureData.is_valid to make sure there is a current fixture."""
         self.refresh_fixture_data()
-        return self.next_fixture
+        return self.current_fixture
 
     def get_next_fixture(self) -> FixtureData:
         """Return data about the next fixture. Refresh if needs to."""
@@ -149,11 +152,13 @@ class TeamAPI(SportsAPI):
         )
         fixtures = r.json()["response"]
         fixtures.sort(key=lambda x: x["fixture"]["timestamp"])
+        _LOGGER.debug("Found %d fixtures", len(fixtures))
 
         now = datetime.now()
         for fixture_json in fixtures:
             fixture_data: FixtureData = FixtureData(fixture_json)
             if fixture_data.fixture.is_in_play():
+                _LOGGER.debug("Found fixture in play - %s", fixture_data.to_string())
                 self.current_fixture = fixture_data
             elif fixture_data.fixture.timestamp >= now.timestamp():
                 if (
@@ -178,13 +183,16 @@ class TeamAPI(SportsAPI):
             and self.league.league_id
             == self.previous_fixture.competition.id  # It was a league match
         ):
+            _LOGGER.debug("Refreshing league data too")
             self.league.refresh(
                 True
             )  # Force a refresh of the league because the standings may have changed
 
     def should_refresh_fixtures(self) -> bool:
         """Check if we need to hit the API again."""
+        _LOGGER.debug("should_refresh_fixtures")
         if self.last_fixture_refresh is None:
+            _LOGGER.debug("TRUE - No last refresh recorded")
             return True
 
         time_since_refresh = datetime.now() - self.last_fixture_refresh
@@ -195,21 +203,30 @@ class TeamAPI(SportsAPI):
             if self.current_fixture.fixture.status in ["HT", "BT"]:
                 refresh_frequency = 15
 
-            return (time_since_refresh.seconds / 60) >= refresh_frequency
+            should_refresh = (time_since_refresh.seconds / 60) >= refresh_frequency
+            _LOGGER.debug(
+                "%s - Fixture in play and time since last refresh was %d seconds",
+                "TRUE" if should_refresh else "FALSE",
+                time_since_refresh.seconds,
+            )
+            return should_refresh
 
         now: datetime = datetime.now()
 
         # Update if we haven't updated today
         if self.last_fixture_refresh.date() != now.date():
+            _LOGGER.debug("TRUE - We haven't refreshed today")
             return True
 
         # Update if our upcoming fixture is now in the past
         if (
             self.next_fixture.is_valid
-            and self.next_fixture.fixture.timestamp <= now.timestamp
+            and self.next_fixture.fixture.timestamp <= now.timestamp()
         ):
+            _LOGGER.debug("TRUE - Our upcoming fixture is now behind us")
             return True
 
+        _LOGGER.debug("FALSE")
         return False
 
     def get_competitions(self) -> Competitions | None:

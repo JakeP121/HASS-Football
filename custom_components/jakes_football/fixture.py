@@ -19,7 +19,7 @@ class FixtureData:
 
         self.goals: Goals | None = None
         self.penalty_shootout: Goals | None = None
-        if self.fixture.status.elapsed > 0:
+        if self.fixture.status.short != "NS":  # NS = Not Started
             self.goals = Goals(data["goals"])
             self.penalty_shootout = Goals(data["score"]["penalty"])
 
@@ -46,6 +46,10 @@ class FixtureData:
         else:
             out["goals"] = None
         return out
+
+    def to_string(self):
+        """Home team vs away team."""
+        return self.home_team.name + " vs " + self.away_team.name
 
 
 class Fixture:
