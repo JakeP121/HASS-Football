@@ -195,10 +195,14 @@ class TeamAPI(SportsAPI):
             _LOGGER.debug("TRUE - No last refresh recorded")
             return True
 
-        time_since_refresh = datetime.now() - self.last_fixture_refresh
+        now: datetime = datetime.now()
+        time_since_refresh = now - self.last_fixture_refresh
 
         # Update more frequently if a match is in progress
-        if self.current_fixture.is_valid and self.current_fixture.fixture.is_in_play():
+        if self.current_fixture.is_valid and (
+            self.current_fixture.fixture.is_in_play()
+            or self.current_fixture.fixture.timestamp <= now.timestamp()
+        ):
             refresh_frequency: int = REFRESH_FREQ_MINUTES_MATCH_IN_PROGRESS
             if self.current_fixture.fixture.status in ["HT", "BT"]:
                 refresh_frequency = 15
@@ -210,8 +214,6 @@ class TeamAPI(SportsAPI):
                 time_since_refresh.seconds,
             )
             return should_refresh
-
-        now: datetime = datetime.now()
 
         # Update if we haven't updated today
         if self.last_fixture_refresh.date() != now.date():
