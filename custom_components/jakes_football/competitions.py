@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 def get_season_number() -> int:
-    """Get the year of the current season (June-May)."""
+    """Get the year of the current season (August-July)."""
     now = datetime.now()
     if now.month >= 6:
         return now.year

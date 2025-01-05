@@ -1,5 +1,6 @@
 """Data types to make handling of fixtures easier."""
 
+from datetime import datetime
 from typing import Any
 
 
@@ -84,7 +85,22 @@ class Fixture:
         """Return true if this match has kicked off and hasn't ended yet (including suspended matches)."""
         in_play_statuses = ["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT"]
 
-        return self.status.short in in_play_statuses
+        if self.status.short in in_play_statuses:
+            return True
+
+        # Sometimes if we update too soon after KO time the match hasn't started but the timestamp is
+        # in the past so it won't refresh. Consider any NS matches within the last two hours as in play
+        now = datetime.now()
+        now_timestamp = now.timestamp()
+        two_hours = 7200
+        if (
+            self.status.short == "NS"
+            and self.timestamp < now_timestamp
+            and self.timestamp >= now_timestamp - two_hours
+        ):
+            return True
+
+        return False
 
 
 class Status:
