@@ -4,7 +4,7 @@ from collections.abc import Mapping
 
 import requests
 
-from .exceptions import CannotConnect, InvalidAuth
+from .exceptions import CannotConnect, HTTPError
 
 
 class SportsAPI:
@@ -38,7 +38,7 @@ class SportsAPI:
 
         errors = response.json()["errors"]
         if len(errors) > 0:
-            raise InvalidAuth
+            raise HTTPError(errors)
 
     def check_status(self):
         """Hits the status endpoint and make sure it returns no errors."""
